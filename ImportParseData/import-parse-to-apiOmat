@@ -27,8 +27,8 @@ objs = {}
 USER_MODEL = '_User'
 
 def showHelp(sys):
-   print 'Usage: import-parse-to-apiOmat -i <inputfile> --appName <appName> --apiKey <apiKey> --system <usedSystem> --userName <userName> --password <userPassword>'
-   print 'Example: import-parse-to-apiOmat  -i 9339.zip -a ParseImport -k 0000000 -s LIVE -u login@apiomat.org -p 12345'
+   print 'Usage: import-parse-to-apiOmat --ifile=<inputfile> --appName=<appName> --apiKey=<apiKey> --system=<usedSystem> --userName=<userName> --password=<userPassword> --defaultPwd=<def_pw_for_user>'
+   print 'Example: import-parse-to-apiOmat  -i 9339.zip -a ParseImport -k 0000000 -s LIVE -u login@apiomat.org -p 12345 -d <default_password_for_user> '
    sys.exit()
 
 def main(argv):
