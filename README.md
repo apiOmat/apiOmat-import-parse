@@ -14,7 +14,7 @@ After the script is finished you can start with programming against apiOmat back
  If you have an account already <a href="https://apiomat.org/?locale=en&free=true&fromDashboard=false#login">login</a> and create a new app.
 2. Deploy your app to our cloud by pressing the deploy icon
 3. Copy your 'ApiKey' from the App-Setup side in our dashboard. Take also note of the selected system in the left panel
-4. Install <a href="http://www.pip-installer.org/en/latest/installing.html">pip</a> if not there already
+4. Install <a href="http://www.pip-installer.org/en/latest/installing.html">pip</a> on your system, if not there already
 5. Type 'pip install import-parse-to-apiOmat' on the command line to install the python script into your system
 6. Goto your Parse dashboard and export your data as zip. For details see <a href="http://blog.parse.com/2012/03/09/one-click-export/">this link</a>
 7. After you received the mail with your data, save them on your harddisk
