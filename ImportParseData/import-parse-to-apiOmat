@@ -15,7 +15,7 @@ import gzip
 baseURL = "http://apiomat.org/yambas/rest"
 apiKey = None
 system = "LIVE"
-userName = None
+userMail = None
 password = None
 appName = None
 defaultPwd = '12345'
@@ -27,17 +27,17 @@ objs = {}
 USER_MODEL = '_User'
 
 def showHelp(sys):
-   print 'Usage: import-parse-to-apiOmat --ifile=<inputfile> --appName=<appName> --apiKey=<apiKey> --system=<usedSystem> --userName=<userName> --password=<userPassword> --defaultPwd=<def_pw_for_user>'
+   print 'Usage: import-parse-to-apiOmat --ifile=<inputfile> --appName=<appName> --apiKey=<apiKey> --system=<usedSystem> --userMail=<userMail> --password=<userPassword> --defaultPwd=<def_pw_for_user>'
    print 'Example: import-parse-to-apiOmat  -i 9339.zip -a ParseImport -k 0000000 -s LIVE -u login@apiomat.org -p 12345 -d <default_password_for_user> '
    sys.exit()
 
 def main(argv):
-   global userName,password, apiKey, system, appName, defaultPwd
+   global userMail,password, apiKey, system, appName, defaultPwd
    inputfile = ''
    try:
-      opts, _ = getopt.getopt(argv, "hi:i:a:k:s:u:p:d", ["ifile=", "appName=", "apiKey=", "system=", "userName=", "password=", "defaultPwd="])
+      opts, _ = getopt.getopt(argv, "hi:i:a:k:s:u:p:d", ["ifile=", "appName=", "apiKey=", "system=", "userMail=", "password=", "defaultPwd="])
    except getopt.GetoptError:
-      print 'import-parse-to-apiOmat -i <inputfile> -a <appName> -k <apiKey> -s <usedSystem> -u <userName> -p <userPassword> -d <default_password_for_user> '
+      print 'import-parse-to-apiOmat -i <inputfile> -a <appName> -k <apiKey> -s <usedSystem> -u <userMail> -p <userPassword> -d <default_password_for_user> '
       sys.exit(2)
    for opt, arg in opts:
       if opt == '-h':
@@ -48,8 +48,8 @@ def main(argv):
          appName = arg
       elif opt in ("-s", "--system"):
          system = arg
-      elif opt in ("-u", "--userName"):
-         userName = arg
+      elif opt in ("-u", "--userMail"):
+         userMail = arg
       elif opt in ("-p", "--password"):
          password = arg
       elif opt in ("-k", "--apiKey"):
@@ -57,7 +57,7 @@ def main(argv):
       elif opt in ("-d", "--defaultPwd"):
          defaultPwd = arg
    #check args
-   if not apiKey or not appName or not inputfile or not password or not userName:
+   if not apiKey or not appName or not inputfile or not password or not userMail:
       showHelp(sys)
    print 'Input file is ', inputfile
    isZipFile = zipfile.is_zipfile(inputfile)
@@ -82,7 +82,7 @@ def main(argv):
                jsonStr =json.loads(data)
                objectName = filename[:-5]
                #print repr(jsonStr)
-               #ets parse
+               #lets parse
                print '### Start importing ',objectName,' ###'
                objects = parseJSON(jsonStr)
                #lets create metamodels in apiOmat
@@ -113,7 +113,7 @@ def main(argv):
       print "Sorry no zip file"
       
 def deployApp():
-#    href = baseURL + "/customers/%s/apps/%s" % (userName,appName)
+#    href = baseURL + "/customers/%s/apps/%s" % (userMail,appName)
 #    postData = {
 #                'applicationName' : "%s" % appName,
 #                'applicationStatus' : {'%s' % system:'ACTIVE'}
@@ -178,7 +178,7 @@ def parseJSON(jsonArray):
                k = None
                key = None
             elif key == 'username':
-               k = 'userName'
+               k = 'userMail'
                key = None
             #convert values
             if typeOfKey == 'bool':
@@ -329,7 +329,7 @@ def createData(objects, objectName):
                print "-> Error occurred when creating reference '%s': %s" % (objHref, error.code)
 
 def _setHeader():
-   authCreds ="Basic " + base64.b64encode(userName + ":" + password);
+   authCreds ="Basic " + base64.b64encode(userMail + ":" + password);
    headers = { 
               'Authorization': authCreds,
               'Content-Type' : 'application/json',
