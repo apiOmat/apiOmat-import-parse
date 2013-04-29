@@ -12,12 +12,13 @@ import time
 from _pyio import BytesIO
 import gzip
 
-baseURL = "http://apiomat.org/yambas/rest"
+baseURL = "http://localhost:8080/yambas/rest"
 apiKey = None
 system = "LIVE"
 userName = None
 password = None
 appName = None
+defaultPwd = '12345'
 
 classNamesAndIds = {}
 metaModelHrefs = {}
@@ -31,12 +32,12 @@ def showHelp(sys):
    sys.exit()
 
 def main(argv):
-   global userName,password, apiKey, system, appName
+   global userName,password, apiKey, system, appName, defaultPwd
    inputfile = ''
    try:
-      opts, _ = getopt.getopt(argv, "hi:i:a:k:s:u:p", ["ifile=", "appName=", "apiKey=", "system=", "userName=", "password="])
+      opts, _ = getopt.getopt(argv, "hi:i:a:k:s:u:p:d", ["ifile=", "appName=", "apiKey=", "system=", "userName=", "password=", "defaultPwd="])
    except getopt.GetoptError:
-      print 'import-parse-to-apiOmat -i <inputfile> -a <appName> -k <apiKey> -s <usedSystem> -u <userName> -p <userPassword>'
+      print 'import-parse-to-apiOmat -i <inputfile> -a <appName> -k <apiKey> -s <usedSystem> -u <userName> -p <userPassword> -d <default_password_for_user> '
       sys.exit(2)
    for opt, arg in opts:
       if opt == '-h':
@@ -53,6 +54,8 @@ def main(argv):
          password = arg
       elif opt in ("-k", "--apiKey"):
          apiKey = arg
+      elif opt in ("-d", "--defaultPwd"):
+         defaultPwd = arg
    #check args
    if not apiKey or not appName or not inputfile or not password or not userName:
       showHelp(sys)
@@ -291,6 +294,9 @@ def createData(objects, objectName):
       tup = tuple( ((k,v) for k, v in dataObj.iteritems() if k in referenceTypes))
       #create json obj and send to server
       dataObj['@type'] =  "%sMain$%s" % (appName, objectName)
+      if 'bcryptPassword' in dataObj and objectName == USER_MODEL:
+         #set default password for user
+         dataObj['password'] = defaultPwd
       postData = json.dumps( dataObj )
       req = urllib2.Request(href, postData, headers)
       try:
