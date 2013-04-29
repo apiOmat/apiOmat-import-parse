@@ -18,11 +18,13 @@ system = "LIVE"
 userName = None
 password = None
 appName = None
+defaultPwd = '12345'
 
 classNamesAndIds = {}
 metaModelHrefs = {}
 objs = {}
 
+USER_MODEL = '_User'
 
 def showHelp(sys):
    print 'Usage: import-parse-to-apiOmat -i <inputfile> --appName <appName> --apiKey <apiKey> --system <usedSystem> --userName <userName> --password <userPassword>'
@@ -30,12 +32,12 @@ def showHelp(sys):
    sys.exit()
 
 def main(argv):
-   global userName,password, apiKey, system, appName
+   global userName,password, apiKey, system, appName, defaultPwd
    inputfile = ''
    try:
-      opts, _ = getopt.getopt(argv, "hi:i:a:k:s:u:p", ["ifile=", "appName=", "apiKey=", "system=", "userName=", "password="])
+      opts, _ = getopt.getopt(argv, "hi:i:a:k:s:u:p:d", ["ifile=", "appName=", "apiKey=", "system=", "userName=", "password=", "defaultPwd="])
    except getopt.GetoptError:
-      print 'import-parse-to-apiOmat -i <inputfile> -a <appName> -k <apiKey> -s <usedSystem> -u <userName> -p <userPassword>'
+      print 'import-parse-to-apiOmat -i <inputfile> -a <appName> -k <apiKey> -s <usedSystem> -u <userName> -p <userPassword> -d <default_password_for_user> '
       sys.exit(2)
    for opt, arg in opts:
       if opt == '-h':
@@ -52,6 +54,8 @@ def main(argv):
          password = arg
       elif opt in ("-k", "--apiKey"):
          apiKey = arg
+      elif opt in ("-d", "--defaultPwd"):
+         defaultPwd = arg
    #check args
    if not apiKey or not appName or not inputfile or not password or not userName:
       showHelp(sys)
@@ -153,26 +157,29 @@ def parseJSON(jsonArray):
             k = key
             #add only keys that are not already there
             typeOfKey = type(value).__name__
-            if(isinstance(value, (list, tuple, dict))):
+            if(isinstance(value, dict)) and key != 'ACL' and key != 'authData':
                #lets check key value
                if '__type' in value:
                   typeOfKey = value['__type']
-               #its normal array/list
-               elif '$oid' in value:
-                  #TODO working with rferences
-                  pass
-               else:
-                  arrayType = 'String'
-                  if len(value) > 0:
-                     arrayType = type(value[0]).__name__
-                  typeOfKey = 'ARRAY__%s' % arrayType
+            elif (isinstance(value, (tuple, list))):
+               arrayType = 'String'
+               if len(value) > 0:
+                  arrayType = type(value[0]).__name__
+               typeOfKey = 'ARRAY__%s' % arrayType
             elif key == 'createdAt' or key == 'updatedAt':
                #lets check if we can get more information about
                typeOfKey = 'Date'
                if key == 'updatedAt':
                   k = 'lastModifiedAt'
+               key = None
             elif key == 'objectId':
                k = 'foreignId'
+            elif  key == 'ACL' or key == 'authData':
+               k = None
+               key = None
+            elif key == 'username':
+               k = 'userName'
+               key = None
             #convert values
             if typeOfKey == 'bool':
                val = 1 if value else 0
@@ -189,10 +196,11 @@ def parseJSON(jsonArray):
             else:
                val = value
 
-            if key not in typeMap:
+            if key and key not in typeMap:
                typeMap[key] = typeOfKey
-               
-            objData[k] = val
+             
+            if k:  
+               objData[k] = val
          data.append(objData)
             
    return [typeMap, data]
@@ -204,9 +212,47 @@ def createMetaModel(objName):
    try:
       response = urllib2.urlopen(req)
       if response.getcode() == 201:
-         return response.info().getheader("Location")
+         href = response.info().getheader("Location")
+         #create child of MemberModel if parse user
+         if objName == USER_MODEL:
+            _createMemberModelChild(href)
+         return href
    except urllib2.HTTPError,error:
       print "-> Some error occurred when creating meta model: ", error.code
+
+def _createMemberModelChild(childHref):
+   #downoad all basic modules to find MemberModel
+   href = baseURL + "/modules/Basics/metamodels" 
+   headers = _setHeader()
+   req = urllib2.Request(href, None, headers)
+   try:
+      response = urllib2.urlopen(req)
+      if response.getcode() == 200:
+         data = response.read()
+         if response.info().get('Content-Encoding') == 'gzip':
+            buf = BytesIO(data)
+            f = gzip.GzipFile(fileobj=buf)
+            data = f.read()
+         data = json.loads(data)
+         if(isinstance(data, (dict, tuple, list))):
+            for metaModel in data:
+               if metaModel['name'] == 'MemberModel':
+                  memberHref = metaModel['href']
+                  memberID = memberHref.rsplit('/',1)[1]
+                  #add parent for 
+                  childHref += "/parent"
+                  #parentMetaModelId
+                  req = urllib2.Request(childHref, "parentMetaModelId=%s" % memberID, headers)
+                  try:
+                     response = urllib2.urlopen(req)
+                     if response.getcode() == 201:
+                        print "# Successfully created parent #"
+                  except urllib2.HTTPError,error:
+                     print "-> Some error occurred when creating parent meta model: ", error.code
+                  break 
+   except urllib2.HTTPError,error:
+      print "-> Some error occurred when processing member model: ", error.code
+
 
 def createMetaModelAttributes(objHREF, typeMap):
    if not typeMap or not objHREF:
@@ -248,6 +294,9 @@ def createData(objects, objectName):
       tup = tuple( ((k,v) for k, v in dataObj.iteritems() if k in referenceTypes))
       #create json obj and send to server
       dataObj['@type'] =  "%sMain$%s" % (appName, objectName)
+      if 'bcryptPassword' in dataObj and objectName == USER_MODEL:
+         #set default password for user
+         dataObj['password'] = defaultPwd
       postData = json.dumps( dataObj )
       req = urllib2.Request(href, postData, headers)
       try:
@@ -294,16 +343,18 @@ def _setHeader():
    return headers
 
 def getApiOmatType(objType):
-   return {
-           'unicode': 'String',
+   try:
+      return {
+            'unicode': 'String',
            'float': 'Double',
            'int': 'Long',
            'Date': 'Date',
            'GeoPoint': 'Location',
            'bool': 'Long',
            'File': 'String',
-   }[objType]
-
+      }[objType]
+   except KeyError as error:
+      return None
 
 def _getData(modelName, childId, href = None):
    data = None
