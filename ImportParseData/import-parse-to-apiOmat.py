@@ -12,7 +12,7 @@ import time
 from _pyio import BytesIO
 import gzip
 
-baseURL = "http://localhost:8080/yambas/rest"
+baseURL = "http://apiomat.org/yambas/rest"
 apiKey = None
 system = "LIVE"
 userName = None
